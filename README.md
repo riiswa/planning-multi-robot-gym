@@ -1,6 +1,6 @@
 # Planning Multi-Robot Gym
 
-A [Gymnasium](https://gymnasium.farama.org/) environment for simulating multi-robot planning. This environment is a implementation of the task to plan for multiple robots to reach a target location, avoiding obstacles in their path. The implementation of the environment logic and graphics was based on this [code](https://www.doc.ic.ac.uk/~ajd/Robotics/RoboticsResources/planningmultirobot.py) written by [Andrew Davison](https://www.doc.ic.ac.uk/~ajd/).
+A [Gymnasium](https://gymnasium.farama.org/) environment for simulating multi-robot planning. This environment is an implementation of the task to plan for multiple robots to reach a target location, avoiding obstacles in their path. The implementation of the environment logic and graphics was based on this [code](https://www.doc.ic.ac.uk/~ajd/Robotics/RoboticsResources/planningmultirobot.py) written by [Andrew Davison](https://www.doc.ic.ac.uk/~ajd/).
 
 This environment simulates the movements of multiple robots in an environment with barriers and a target. The robots are controlled by the actions given by an agent. The observations received by the agent includes information about the position, velocity and orientation of each robot, the future position of the target and the future position of the obstacles. The goal of the agent is to navigate the robots to the target while avoiding collisions with the obstacles.
 
