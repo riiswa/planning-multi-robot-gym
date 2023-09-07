@@ -38,7 +38,8 @@ class PlanningMultiRobotEnv(gym.Env):
             steps_ahead_to_plan: int = 10,
             reach_target_reward: float = 1000.0,
             collision_penalty: float = -500.0,
-            reset_when_target_reached: bool = False
+            reset_when_target_reached: bool = False,
+            dict_action_space = True, # See if really add this and change the doc if needed
     ):
         """
         Args:
@@ -76,18 +77,22 @@ class PlanningMultiRobotEnv(gym.Env):
         self.max_velocity = max_velocity
         self.max_acceleration = max_acceleration
         self.barrier_velocity_range = barrier_velocity_range
+        self.dict_action_space = dict_action_space
 
         self.play_field_corners: Tuple[float, float, float, float] = (-4.0, -3.0, 4.0, 3.0)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self.action_space = spaces.Dict(
-            {
-                "vR": spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(n_robots,), dtype=float),
-                "vL": spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(n_robots,), dtype=float),
-            }
-        )
+        if self.dict_action_space:
+            self.action_space = spaces.Dict(
+                {
+                    "vR": spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(n_robots,), dtype=float),
+                    "vL": spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(n_robots,), dtype=float),
+                }
+            )
+        else:
+            self.action_space = spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(2*n_robots,), dtype=float)
 
         self.observation_space = spaces.Dict(
             {
@@ -213,6 +218,13 @@ class PlanningMultiRobotEnv(gym.Env):
 
     def step(self, action: dict[str, ndarray]):
         assert self.action_space.contains(action)
+        
+        if self.dict_action_space:
+            action_vL = action["vL"]
+            action_vR = action["vR"]
+        else:
+            action_vL = action[:self.n_robots]
+            action_vR = action[self.n_robots:]
 
         self._move_barriers(self.barriers)
 
@@ -220,11 +232,11 @@ class PlanningMultiRobotEnv(gym.Env):
         for i, robot in enumerate(self.robots):
             robot.location_history.append((robot.x, robot.y))
             vL = min(
-                max(robot.vL - self.max_acceleration * self.dt, action["vL"][i]),
+                max(robot.vL - self.max_acceleration * self.dt, action_vL[i]),
                 robot.vL + self.max_acceleration * self.dt
             )
             vR = min(
-                max(robot.vR - self.max_acceleration * self.dt, action["vR"][i]),
+                max(robot.vR - self.max_acceleration * self.dt, action_vR[i]),
                 robot.vR + self.max_acceleration * self.dt
             )
 
