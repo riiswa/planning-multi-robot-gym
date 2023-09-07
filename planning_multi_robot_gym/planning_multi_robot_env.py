@@ -40,6 +40,7 @@ class PlanningMultiRobotEnv(gym.Env):
             collision_penalty: float = -500.0,
             reset_when_target_reached: bool = False,
             dict_action_space = True, # See if really add this and change the doc if needed
+            episode_length = None # Same, see if improves the results 
     ):
         """
         Args:
@@ -78,6 +79,8 @@ class PlanningMultiRobotEnv(gym.Env):
         self.max_acceleration = max_acceleration
         self.barrier_velocity_range = barrier_velocity_range
         self.dict_action_space = dict_action_space
+        self.episode_length = episode_length
+        self.episode_dt = 0
 
         self.play_field_corners: Tuple[float, float, float, float] = (-4.0, -3.0, 4.0, 3.0)
 
@@ -156,6 +159,7 @@ class PlanningMultiRobotEnv(gym.Env):
     ):
         super().reset(seed=seed)
 
+        self.episode_dt = 0
         self.barriers = []
         for i in range(self.n_barriers):
             barrier = [
@@ -219,6 +223,7 @@ class PlanningMultiRobotEnv(gym.Env):
     def step(self, action: dict[str, ndarray]):
         assert self.action_space.contains(action)
         
+        # See if no errors here 
         if self.dict_action_space:
             action_vL = action["vL"]
             action_vR = action["vR"]
@@ -227,6 +232,7 @@ class PlanningMultiRobotEnv(gym.Env):
             action_vR = action[self.n_robots:]
 
         self._move_barriers(self.barriers)
+        self.episode_dt += 1
 
         reward = 0
         for i, robot in enumerate(self.robots):
@@ -278,8 +284,10 @@ class PlanningMultiRobotEnv(gym.Env):
             for robot in self.robots:
                 robot.location_history = []
 
-        return self._get_obs(), reward, self.reset_when_target_reached and robot_has_reached_target, False, self._info
+        truncated = self.episode_dt > self.episode_length if self.episode_length else False
 
+        return self._get_obs(), reward, self.reset_when_target_reached and robot_has_reached_target, truncated, self._info
+    
     def _draw_barriers(self, screen):
         for (i, barrier) in enumerate(self.barriers):
             if i == self.target_index:

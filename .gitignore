@@ -1,1 +1,4 @@
 *.pyc
+*.ipynb
+logs/
+models/PPO*
