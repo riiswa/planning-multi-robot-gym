@@ -36,8 +36,8 @@ class PlanningMultiRobotEnv(gym.Env):
             barrier_velocity_range: float = 0.2,
             dt: float = 0.1,
             steps_ahead_to_plan: int = 10,
-            reach_target_reward: float = 1000.0,
-            collision_penalty: float = -500.0,
+            reach_target_reward: float = 1.0,
+            collision_penalty: float = -1.0,
             reset_when_target_reached: bool = False,
             dict_action_space = True, # See if really add this and change the doc if needed
             episode_length = None # Same, see if improves the results 

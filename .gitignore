@@ -2,3 +2,4 @@
 *.ipynb
 logs/
 models/PPO*
+models/*_robots*
