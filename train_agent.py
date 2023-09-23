@@ -9,14 +9,25 @@ import planning_multi_robot_gym
 from stable_baselines3 import PPO, DDPG, A2C, TD3, SAC
 from planning_multi_robot_gym.planning_multi_robot_env import PlanningMultiRobotEnv
 
+# Here is a non exhaustive list of stable baselines 3 algorithms 
 algos = {"PPO": PPO,
          "DDPG": DDPG,
          "A2C": A2C,
          "TD3": TD3,
          "SAC": SAC}
 
+# You can also implement and import your own algorithm, or another existing one to test it like this:
+
+"""
+import ALGO
+
+algos = {other existing algorithms,
+         "ALGO": ALGO} 
+"""
+
 
 if __name__ == "__main__":
+    # Bellow are the arguments you can pass in when running the python file
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--n_robots", type=int, required=False, default=1)
