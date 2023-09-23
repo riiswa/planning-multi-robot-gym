@@ -36,9 +36,11 @@ class PlanningMultiRobotEnv(gym.Env):
             barrier_velocity_range: float = 0.2,
             dt: float = 0.1,
             steps_ahead_to_plan: int = 10,
-            reach_target_reward: float = 1000.0,
-            collision_penalty: float = -500.0,
-            reset_when_target_reached: bool = False
+            reach_target_reward: float = 1.0,
+            collision_penalty: float = -1.0,
+            reset_when_target_reached: bool = False,
+            dict_action_space = True,
+            episode_length = None 
     ):
         """
         Args:
@@ -57,6 +59,10 @@ class PlanningMultiRobotEnv(gym.Env):
             collision_penalty (float): The penalty given when a robot collides with a barrier or another robot.
             reset_when_target_reached (bool): A flag indicating whether the environment should reset when a robot
                 reaches the target.
+            dict_action_space (bool) : Transforms the Dict action space of the agent into Box or not
+            episode_length (int): The number of timesteps before ending an episode. If None, the episode never stops
+                because of a time limit.
+
         """
         self.robots: List[Robot] = []
         self.target_index = None
@@ -76,18 +82,25 @@ class PlanningMultiRobotEnv(gym.Env):
         self.max_velocity = max_velocity
         self.max_acceleration = max_acceleration
         self.barrier_velocity_range = barrier_velocity_range
+        self.dict_action_space = dict_action_space
+        self.episode_length = episode_length
+        self.episode_dt = 0
 
         self.play_field_corners: Tuple[float, float, float, float] = (-4.0, -3.0, 4.0, 3.0)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self.action_space = spaces.Dict(
-            {
-                "vR": spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(n_robots,), dtype=float),
-                "vL": spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(n_robots,), dtype=float),
-            }
-        )
+        # Use either a Dict or a Box action space 
+        if self.dict_action_space:
+            self.action_space = spaces.Dict(
+                {
+                    "vR": spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(n_robots,), dtype=float),
+                    "vL": spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(n_robots,), dtype=float),
+                }
+            )
+        else:
+            self.action_space = spaces.Box(low=-self.max_velocity, high=self.max_velocity, shape=(2*n_robots,), dtype=float)
 
         self.observation_space = spaces.Dict(
             {
@@ -151,6 +164,7 @@ class PlanningMultiRobotEnv(gym.Env):
     ):
         super().reset(seed=seed)
 
+        self.episode_dt = 0
         self.barriers = []
         for i in range(self.n_barriers):
             barrier = [
@@ -213,18 +227,28 @@ class PlanningMultiRobotEnv(gym.Env):
 
     def step(self, action: dict[str, ndarray]):
         assert self.action_space.contains(action)
+        
+        # action_vL, action_vR = actions for vL and vR for all the robotos
+        if self.dict_action_space:
+            action_vL, action_vR = action["vL"], action["vR"]
+            print(f"Dict : {action_vL.shape = } ; {action_vR.shape = }")
+        else:
+            # Thy is why we split the action vector in two if we use a Box action space
+            action_vL, action_vR = action[:self.n_robots], action[self.n_robots:]
+            print(f"Box : {action_vL.shape = } ; {action_vR.shape = }")
 
         self._move_barriers(self.barriers)
+        self.episode_dt += 1
 
         reward = 0
         for i, robot in enumerate(self.robots):
             robot.location_history.append((robot.x, robot.y))
             vL = min(
-                max(robot.vL - self.max_acceleration * self.dt, action["vL"][i]),
+                max(robot.vL - self.max_acceleration * self.dt, action_vL[i]),
                 robot.vL + self.max_acceleration * self.dt
             )
             vR = min(
-                max(robot.vR - self.max_acceleration * self.dt, action["vR"][i]),
+                max(robot.vR - self.max_acceleration * self.dt, action_vR[i]),
                 robot.vR + self.max_acceleration * self.dt
             )
 
@@ -266,8 +290,10 @@ class PlanningMultiRobotEnv(gym.Env):
             for robot in self.robots:
                 robot.location_history = []
 
-        return self._get_obs(), reward, self.reset_when_target_reached and robot_has_reached_target, False, self._info
+        truncated = self.episode_dt > self.episode_length if self.episode_length else False
 
+        return self._get_obs(), reward, self.reset_when_target_reached and robot_has_reached_target, truncated, self._info
+    
     def _draw_barriers(self, screen):
         for (i, barrier) in enumerate(self.barriers):
             if i == self.target_index:
